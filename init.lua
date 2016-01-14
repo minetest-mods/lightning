@@ -14,7 +14,8 @@ local lightning = {}
 
 lightning.interval_low = 17
 lightning.interval_high = 503
-lightning.range = 200
+lightning.range_h = 100
+lightning.range_v = 50
 lightning.size = 100
 
 local rng = PcgRandom(32321123312123)
@@ -39,13 +40,18 @@ lightning.strike = function()
 		return
 	end
 
-	pos.x = math.floor(pos.x - (lightning.range / 2) + rng:next(1, lightning.range))
-	pos.y = pos.y + (lightning.range / 2)
-	pos.z = math.floor(pos.z - (lightning.range / 2) + rng:next(1, lightning.range))
+	pos.x = math.floor(pos.x - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
+	pos.y = pos.y + (lightning.range_v / 2)
+	pos.z = math.floor(pos.z - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
 
-	local b, pos2 = minetest.line_of_sight(pos, {x = pos.x, y = pos.y - lightning.range, z = pos.z}, 1)
+	local b, pos2 = minetest.line_of_sight(pos, {x = pos.x, y = pos.y - lightning.range_v, z = pos.z}, 1)
 	-- nothing but air found
 	if b then
+		return
+	end
+
+	local n = minetest.get_node({x = pos2.x, y = pos2.y - 1/2, z = pos2.z})
+	if n.name == "air" or n.name == "ignore" then
 		return
 	end
 
@@ -53,11 +59,8 @@ lightning.strike = function()
 		amount = 1,
 		time = 0.2,
 		-- make it hit the top of a block exactly with the bottom
-		minpos = { x = pos2.x, y = pos2.y + (lightning.size / 2) + 1/2, z = pos2.z },
-		maxpos = { x = pos2.x, y = pos2.y + (lightning.size / 2) + 1/2, z = pos2.z },
-		-- the particle will be centered above the pos2 position but we
-		-- want it to hit the node on the ground
-		-- down really fast at the ground
+		minpos = {x = pos2.x, y = pos2.y + (lightning.size / 2) + 1/2, z = pos2.z },
+		maxpos = {x = pos2.x, y = pos2.y + (lightning.size / 2) + 1/2, z = pos2.z },
 		minvel = {x = 0, y = 0, z = 0},
 		maxvel = {x = 0, y = 0, z = 0},
 		minacc = {x = 0, y = 0, z = 0},
@@ -78,21 +81,29 @@ lightning.strike = function()
 
 	-- set the air node above it on fire
 	pos2.y = pos2.y + 1/2
-	if minetest.get_node(pos2).name == "air" then
-		minetest.set_node(pos2, {name = "fire:basic_flame"})
+	if minetest.get_item_group(minetest.get_node({x = pos2.x, y = pos2.y - 1, z = pos2.z}).name, "liquid") < 1 then
+		if minetest.get_node(pos2).name == "air" then
+			-- only 1/4 of the time, something is changed
+			if rng:next(1,4) > 1 then
+				return
+			end
+			-- very rarely, cause a massive forest fire (100*4*250 = 1/100000 seconds)
+			if rng:next(1,100) == 1 then
+				minetest.set_node(pos2, {name = "fire:basic_flame"})
+			else
+				minetest.set_node(pos2, {name = "fire:permanent_flame"})
+			end
+		end
 	end
 
 	-- perform block modifications
 	pos2.y = pos2.y - 1
 	local n = minetest.get_node(pos2)
-	if n.name == "default:tree" or n.name == "default:jungletree" or n.name == "default:pine_tree" or
-	   n.name == "default:acacia_tree" or n.name == "default:acacia_tree" then
+	if minetest.get_item_group(n.name, "tree") > 0 then
 		minetest.set_node(pos2, { name = "default:coalblock"})
-	elseif n.name == "default:sand" or n.name == "default:desert_sand" then
+	elseif minetest.get_item_group(n.name, "sand") > 0 then
 		minetest.set_node(pos2, { name = "default:glass"})
-	elseif string.find(n.name, "default:dirt") then
-		minetest.set_node(pos2, { name = "default:gravel"})
-	elseif string.find(n.name, "default:soil") then
+	elseif minetest.get_item_group(n.name, "soil") > 0 then
 		minetest.set_node(pos2, { name = "default:gravel"})
 	end
 end
