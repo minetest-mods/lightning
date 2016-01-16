@@ -20,6 +20,27 @@ lightning.size = 100
 
 local rng = PcgRandom(32321123312123)
 
+local ps = {}
+local ttl = 1
+
+local revertsky = function()
+	if ttl == 0 then
+		return
+	end
+	ttl = ttl - 1
+	if ttl > 0 then
+		return
+	end
+
+	for i = 1, table.getn(ps) do
+		ps[i].p:set_sky(ps[i].sky.bgcolor, ps[i].sky.type, ps[i].sky.textures)
+	end
+
+	ps = {}
+end
+
+minetest.register_globalstep(revertsky)
+
 lightning.strike = function()
 	minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
 
@@ -78,6 +99,15 @@ lightning.strike = function()
 	})
 
 	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
+
+	for i = 1, playercount do
+		local sky = {}
+		sky.bgcolor, sky.type, sky.textures = playerlist[i]:get_sky()
+		table.insert(ps, { p = playerlist[i], sky = sky})
+		playerlist[i]:set_sky(0xffffff, "plain", {})
+	end
+	-- trigger revert of skybox
+	ttl = 5
 
 	-- set the air node above it on fire
 	pos2.y = pos2.y + 1/2
