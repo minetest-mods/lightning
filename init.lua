@@ -117,16 +117,19 @@ lightning.strike = function()
 			if rng:next(1,4) > 1 then
 				return
 			end
-			-- very rarely, cause a massive forest fire (100*4*250 = 1/100000 seconds)
-			if rng:next(1,100) == 1 then
+			-- very rarely, potentially cause a fire
+			if rng:next(1,1000) == 1 then
 				minetest.set_node(pos2, {name = "fire:basic_flame"})
 			else
-				minetest.set_node(pos2, {name = "fire:permanent_flame"})
+				minetest.set_node(pos2, {name = "lightning:dying_flame"})
 			end
 		end
 	end
 
 	-- perform block modifications
+	if rng:next(1,10) > 1 then
+		return
+	end
 	pos2.y = pos2.y - 1
 	local n = minetest.get_node(pos2)
 	if minetest.get_item_group(n.name, "tree") > 0 then
@@ -137,5 +140,46 @@ lightning.strike = function()
 		minetest.set_node(pos2, { name = "default:gravel"})
 	end
 end
+
+-- a special fire node that doesn't burn anything, and automatically disappears
+minetest.register_node("lightning:dying_flame", {
+	description = "Dying Flame",
+	drawtype = "firelike",
+	tiles = {
+		{
+			name = "fire_basic_flame_animated.png",
+			animation = {
+				type = "vertical_frames",
+				aspect_w = 16,
+				aspect_h = 16,
+				length = 1
+			},
+		},
+	},
+	inventory_image = "fire_basic_flame.png",
+	paramtype = "light",
+	light_source = 14,
+	walkable = false,
+	buildable_to = true,
+	sunlight_propagates = true,
+	damage_per_second = 4,
+	groups = {dig_immediate = 3},
+	drop = "",
+
+	on_construct = function(pos)
+		minetest.after(0, fire.on_flame_add_at, pos)
+		minetest.after(rng:next(20, 40), minetest.remove_node, pos)
+	end,
+
+	on_destruct = function(pos)
+		minetest.after(0, fire.on_flame_remove_at, pos)
+		minetest.after(rng:next(20, 40), minetest.remove_node, pos)
+	end,
+
+	on_blast = function()
+	end, -- unaffected by explosions
+})
+
+
 
 minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
