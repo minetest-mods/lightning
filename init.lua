@@ -17,6 +17,8 @@ lightning.interval_high = 503
 lightning.range_h = 100
 lightning.range_v = 50
 lightning.size = 100
+-- disable this to stop lightning mod from striking
+lightning.auto = true
 
 local rng = PcgRandom(32321123312123)
 
@@ -42,7 +44,9 @@ end
 minetest.register_globalstep(revertsky)
 
 lightning.strike = function()
-	minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
+	if lightning.auto then
+		minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
+	fi
 
 	local playerlist = minetest.get_connected_players()
 	local playercount = table.getn(playerlist)
@@ -181,5 +185,6 @@ minetest.register_node("lightning:dying_flame", {
 })
 
 
-
-minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
+if lightning.auto then
+	minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
+end
