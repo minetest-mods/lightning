@@ -10,7 +10,7 @@ of the license, or (at your option) any later version.
 
 --]]
 
-local lightning = {}
+lightning = {}
 
 lightning.interval_low = 17
 lightning.interval_high = 503
