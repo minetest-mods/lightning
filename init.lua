@@ -43,26 +43,25 @@ end
 
 minetest.register_globalstep(revertsky)
 
-lightning.strike = function()
-	if lightning.auto then
-		minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
-	fi
+-- select a random strike point, midpoint
+local function choose_pos(pos)
+	if not pos then
+		local playerlist = minetest.get_connected_players()
+		local playercount = table.getn(playerlist)
 
-	local playerlist = minetest.get_connected_players()
-	local playercount = table.getn(playerlist)
+		-- nobody on
+		if playercount == 0 then
+			return nil, nil
+		end
 
-	-- nobody on
-	if playercount == 0 then
-		return
+		local r = rng:next(1, playercount)
+		local randomplayer = playerlist[r]
+		pos = randomplayer:getpos()
 	end
-
-	local r = rng:next(1, playercount)
-	local randomplayer = playerlist[r]
-	local pos = randomplayer:getpos()
 
 	-- avoid striking underground
 	if pos.y < -20 then
-		return
+		return nil, nil
 	end
 
 	pos.x = math.floor(pos.x - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
@@ -72,12 +71,31 @@ lightning.strike = function()
 	local b, pos2 = minetest.line_of_sight(pos, {x = pos.x, y = pos.y - lightning.range_v, z = pos.z}, 1)
 	-- nothing but air found
 	if b then
-		return
+		return nil, nil
 	end
 
 	local n = minetest.get_node({x = pos2.x, y = pos2.y - 1/2, z = pos2.z})
 	if n.name == "air" or n.name == "ignore" then
-		return
+		return nil, nil
+	end
+
+	return pos, pos2
+end
+
+-- lightning strike API
+-- * pos: optional, if not given a random pos will be chosen
+-- * returns: bool - success if a strike happened
+lightning.strike = function(pos)
+	if lightning.auto then
+		minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
+	end
+
+	local pos2
+	if not pos then
+		pos, pos2 = choose_pos()
+		if not pos then
+			return false
+		end
 	end
 
 	minetest.add_particlespawner({
@@ -104,7 +122,8 @@ lightning.strike = function()
 
 	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
 
-	for i = 1, playercount do
+	local playerlist = minetest.get_connected_players()
+	for i = 1, #playerlist do
 		local sky = {}
 		sky.bgcolor, sky.type, sky.textures = playerlist[i]:get_sky()
 		table.insert(ps, { p = playerlist[i], sky = sky})
