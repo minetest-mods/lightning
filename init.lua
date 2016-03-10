@@ -57,18 +57,19 @@ local function choose_pos(pos)
 		local r = rng:next(1, playercount)
 		local randomplayer = playerlist[r]
 		pos = randomplayer:getpos()
-	end
 
-	-- avoid striking underground
-	if pos.y < -20 then
-		return nil, nil
-	end
+		-- avoid striking underground
+		if pos.y < -20 then
+			return nil, nil
+		end
 
-	pos.x = math.floor(pos.x - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
-	pos.y = pos.y + (lightning.range_v / 2)
-	pos.z = math.floor(pos.z - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
+		pos.x = math.floor(pos.x - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
+		pos.y = pos.y + (lightning.range_v / 2)
+		pos.z = math.floor(pos.z - (lightning.range_h / 2) + rng:next(1, lightning.range_h))
+	end
 
 	local b, pos2 = minetest.line_of_sight(pos, {x = pos.x, y = pos.y - lightning.range_v, z = pos.z}, 1)
+
 	-- nothing but air found
 	if b then
 		return nil, nil
@@ -91,11 +92,10 @@ lightning.strike = function(pos)
 	end
 
 	local pos2
+	pos, pos2 = choose_pos(pos)
+
 	if not pos then
-		pos, pos2 = choose_pos()
-		if not pos then
-			return false
-		end
+		return false
 	end
 
 	minetest.add_particlespawner({
