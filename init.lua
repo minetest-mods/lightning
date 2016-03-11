@@ -198,7 +198,10 @@ minetest.register_node("lightning:dying_flame", {
 	end,
 })
 
-
-if lightning.auto then
-	minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
-end
+-- if other mods disable auto lightning during initialization, don't trigger the first lightning.
+minetest.after(5, function(dtime)
+	if lightning.auto then
+		minetest.after(rng:next(lightning.interval_low,
+			lightning.interval_high), lightning.strike)
+	end
+end)
