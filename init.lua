@@ -122,6 +122,12 @@ lightning.strike = function(pos)
 
 	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
 
+	-- damage nearby objects, player or not
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
+		-- nil as param#1 is supposed to work, but core can't handle it.
+		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=8}}, nil)
+	end
+
 	local playerlist = minetest.get_connected_players()
 	for i = 1, #playerlist do
 		local sky = {}
