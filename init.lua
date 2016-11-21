@@ -19,10 +19,16 @@ lightning.range_v = 50
 lightning.size = 100
 -- disable this to stop lightning mod from striking
 lightning.auto = true
+-- lightning damage.  Default is "light" {name, outerRadius, outerRadiusDamage, innerRadius, innerRadiusAdditionalDamage, volumeGain}
+damageTable = {
+	{"light", 5, 16, 2, 16, 10},
+	{"medium", 7, 20, 3, 20, 15},
+	{"heavy", 10, 30, 5, 30, 20},
+}
 
 local rng = PcgRandom(32321123312123)
 
-local ps = {}
+local playerSkies = {}
 local ttl = 1
 
 local revertsky = function()
@@ -34,11 +40,11 @@ local revertsky = function()
 		return
 	end
 
-	for i = 1, table.getn(ps) do
-		ps[i].p:set_sky(ps[i].sky.bgcolor, ps[i].sky.type, ps[i].sky.textures)
+	for key, entry in pairs(playerSkies) do
+		--print("lightning: Restoring sky for ", key)
+		entry.p:set_sky(entry.sky.bgcolor, entry.sky.type, entry.sky.textures)
 	end
-
-	ps = {}
+	playerSkies = {}
 end
 
 minetest.register_globalstep(revertsky)
@@ -85,8 +91,9 @@ end
 
 -- lightning strike API
 -- * pos: optional, if not given a random pos will be chosen
+-- * strength: optional: "light", "medium", or "heavy". Default is "light"
 -- * returns: bool - success if a strike happened
-lightning.strike = function(pos)
+lightning.strike = function(pos, strength)
 	if lightning.auto then
 		minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
 	end
@@ -120,20 +127,64 @@ lightning.strike = function(pos)
 		texture = "lightning_lightning_" .. rng:next(1,3) .. ".png",
 	})
 
-	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
+	-- just how big a deal is this going to be?
+	--print("lightning: lightning strength = ", strength)
+	if strength == nil then
+		strength = "light"
+	end
+	local outerRadius
+	local outerRadiusDamage
+	local innerRadius
+	local innerRadiusDamage
+	local volumeGain
+	for _, damageStrengthEntry in ipairs(damageTable) do
+		if strength == damageStrengthEntry[1] then
+			outerRadius = damageStrengthEntry[2]
+			outerRadiusDamage = damageStrengthEntry[3]
+			innerRadius = damageStrengthEntry[4]
+			innerRadiusDamage = damageStrengthEntry[5]
+			volumeGain = damageStrengthEntry[6]
+		end
+	end
+  
+  minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = volumeGain, max_hear_distance = 500 })
 
 	-- damage nearby objects, player or not
-	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, outerRadius)) do
 		-- nil as param#1 is supposed to work, but core can't handle it.
-		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=8}}, nil)
+		if obj:get_luaentity() ~= nil then
+			--print("Inside outer lighting damage radius (", outerRadius, "): ", obj:get_luaentity().name)
+		else
+			--print("Inside outer lighting damage radius (", outerRadius, "): ", obj)
+		end
+		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=outerRadiusDamage}}, nil)
+	end
+	-- add additional damage for objects closest to strike point
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, innerRadius)) do
+		-- nil as param#1 is supposed to work, but core can't handle it.
+		--print("Inside inner lighting damage radius (", innerRadius, "): ", obj:get_luaentity().name)
+		if obj:get_hp() > 0 then
+			obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=innerRadiusDamage}}, nil)
+		end
 	end
 
 	local playerlist = minetest.get_connected_players()
 	for i = 1, #playerlist do
+		local player = playerlist[i]
+		local playerName = player:get_player_name()
+		--print("Here's a player that needs to have their sky managed!", playerName)
 		local sky = {}
-		sky.bgcolor, sky.type, sky.textures = playerlist[i]:get_sky()
-		table.insert(ps, { p = playerlist[i], sky = sky})
-		playerlist[i]:set_sky(0xffffff, "plain", {})
+		sky.bgcolor, sky.type, sky.textures = player:get_sky()
+		--don't record this if we already have a record of the player's original sky (we don't want to record a blank sky from a preceding strike)
+		if playerSkies[playerName] == nil then
+			playerSkies[playerName] = {p = player, sky = sky}
+			--table.insert(playerSkies, player:get_player_name(), {p = player, sky = sky})
+			--table.insert(playerSkies, { p = player, sky = sky})
+			player:set_sky(0xffffff, "plain", {})
+		else
+			--print("lightning: Player's sky already on record")
+		end
+		--print("New Player Sky record:", playerSkies[playerName].p:get_player_name())
 	end
 	-- trigger revert of skybox
 	ttl = 5
