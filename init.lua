@@ -19,12 +19,6 @@ lightning.range_v = 50
 lightning.size = 100
 -- disable this to stop lightning mod from striking
 lightning.auto = true
--- lightning damage.  Default is "light" {name, outerRadius, outerRadiusDamage, innerRadius, innerRadiusAdditionalDamage, volumeGain}
-damageTable = {
-	{"light", 5, 16, 2, 16, 10},
-	{"medium", 7, 20, 3, 20, 15},
-	{"heavy", 10, 30, 5, 30, 20},
-}
 
 local rng = PcgRandom(32321123312123)
 
@@ -91,9 +85,8 @@ end
 
 -- lightning strike API
 -- * pos: optional, if not given a random pos will be chosen
--- * strength: optional: "light", "medium", or "heavy". Default is "light"
 -- * returns: bool - success if a strike happened
-lightning.strike = function(pos, strength)
+lightning.strike = function(pos)
 	if lightning.auto then
 		minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
 	end
@@ -127,45 +120,12 @@ lightning.strike = function(pos, strength)
 		texture = "lightning_lightning_" .. rng:next(1,3) .. ".png",
 	})
 
-	-- just how big a deal is this going to be?
-	--print("lightning: lightning strength = ", strength)
-	if strength == nil then
-		strength = "light"
-	end
-	local outerRadius
-	local outerRadiusDamage
-	local innerRadius
-	local innerRadiusDamage
-	local volumeGain
-	for _, damageStrengthEntry in ipairs(damageTable) do
-		if strength == damageStrengthEntry[1] then
-			outerRadius = damageStrengthEntry[2]
-			outerRadiusDamage = damageStrengthEntry[3]
-			innerRadius = damageStrengthEntry[4]
-			innerRadiusDamage = damageStrengthEntry[5]
-			volumeGain = damageStrengthEntry[6]
-		end
-	end
-  
-  minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = volumeGain, max_hear_distance = 500 })
+ 	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 }) 
 
 	-- damage nearby objects, player or not
-	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, outerRadius)) do
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
 		-- nil as param#1 is supposed to work, but core can't handle it.
-		if obj:get_luaentity() ~= nil then
-			--print("Inside outer lighting damage radius (", outerRadius, "): ", obj:get_luaentity().name)
-		else
-			--print("Inside outer lighting damage radius (", outerRadius, "): ", obj)
-		end
-		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=outerRadiusDamage}}, nil)
-	end
-	-- add additional damage for objects closest to strike point
-	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, innerRadius)) do
-		-- nil as param#1 is supposed to work, but core can't handle it.
-		--print("Inside inner lighting damage radius (", innerRadius, "): ", obj:get_luaentity().name)
-		if obj:get_hp() > 0 then
-			obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=innerRadiusDamage}}, nil)
-		end
+		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=8}}, nil) 
 	end
 
 	local playerlist = minetest.get_connected_players()
@@ -182,7 +142,7 @@ lightning.strike = function(pos, strength)
 			--table.insert(playerSkies, { p = player, sky = sky})
 			player:set_sky(0xffffff, "plain", {})
 		else
-			--print("lightning: Player's sky already on record")
+			print("lightning: Player's sky already on record")
 		end
 		--print("New Player Sky record:", playerSkies[playerName].p:get_player_name())
 	end
