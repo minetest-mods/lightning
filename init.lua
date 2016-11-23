@@ -22,7 +22,7 @@ lightning.auto = true
 
 local rng = PcgRandom(32321123312123)
 
-local ps = {}
+local playerSkies = {}
 local ttl = 1
 
 local revertsky = function()
@@ -34,11 +34,11 @@ local revertsky = function()
 		return
 	end
 
-	for i = 1, table.getn(ps) do
-		ps[i].p:set_sky(ps[i].sky.bgcolor, ps[i].sky.type, ps[i].sky.textures)
+	for key, entry in pairs(playerSkies) do
+		--print("lightning: Restoring sky for ", key)
+		entry.p:set_sky(entry.sky.bgcolor, entry.sky.type, entry.sky.textures)
 	end
-
-	ps = {}
+	playerSkies = {}
 end
 
 minetest.register_globalstep(revertsky)
@@ -130,10 +130,21 @@ lightning.strike = function(pos)
 
 	local playerlist = minetest.get_connected_players()
 	for i = 1, #playerlist do
+		local player = playerlist[i]
+		local playerName = player:get_player_name()
+		--print("Here's a player that needs to have their sky managed!", playerName)
 		local sky = {}
-		sky.bgcolor, sky.type, sky.textures = playerlist[i]:get_sky()
-		table.insert(ps, { p = playerlist[i], sky = sky})
-		playerlist[i]:set_sky(0xffffff, "plain", {})
+		sky.bgcolor, sky.type, sky.textures = player:get_sky()
+		--don't record this if we already have a record of the player's original sky (we don't want to record a blank sky from a preceding strike)
+		if playerSkies[playerName] == nil then
+			playerSkies[playerName] = {p = player, sky = sky}
+			--table.insert(playerSkies, player:get_player_name(), {p = player, sky = sky})
+			--table.insert(playerSkies, { p = player, sky = sky})
+			player:set_sky(0xffffff, "plain", {})
+		else
+			print("lightning: Player's sky already on record")
+		end
+		--print("New Player Sky record:", playerSkies[playerName].p:get_player_name())
 	end
 	-- trigger revert of skybox
 	ttl = 5
