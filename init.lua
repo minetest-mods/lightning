@@ -120,7 +120,7 @@ lightning.strike = function(pos)
 		texture = "lightning_lightning_" .. rng:next(1,3) .. ".png",
 	})
 
- 	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 }) 
+	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
 
 	-- damage nearby objects, player or not
 	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
