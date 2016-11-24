@@ -129,8 +129,8 @@ lightning.strike = function(pos, strength)
 	if strength == nil then
 		strength = lightning.strength_default
 	end
-	if strength > strength_max then
-		strength = strength_max
+	if strength > lightning.strength_max then
+		strength = lightning.strength_max
 	end
 	local outer_radius = strength
 	local outer_radius_damage = strength * 3
