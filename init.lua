@@ -17,6 +17,9 @@ lightning.interval_high = 503
 lightning.range_h = 100
 lightning.range_v = 50
 lightning.size = 100
+-- number corresponding directly to affected radius and influencing damage amount
+lightning.strength_default = 2 
+lightning.strength_max = 10
 -- disable this to stop lightning mod from striking
 lightning.auto = true
 
@@ -86,8 +89,10 @@ end
 
 -- lightning strike API
 -- * pos: optional, if not given a random pos will be chosen
+-- * strength: optional, number corresponding directly to affected radius and influencing damage amount. 
+--             (suggested value range: 1-10)
 -- * returns: bool - success if a strike happened
-lightning.strike = function(pos)
+lightning.strike = function(pos, strength)
 	if lightning.auto then
 		minetest.after(rng:next(lightning.interval_low, lightning.interval_high), lightning.strike)
 	end
@@ -121,12 +126,31 @@ lightning.strike = function(pos)
 		texture = "lightning_lightning_" .. rng:next(1,3) .. ".png",
 	})
 
-	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
+	if strength == nil then
+		strength = lightning.strength_default
+	end
+	if strength > strength_max then
+		strength = strength_max
+	end
+	local outer_radius = strength
+	local outer_radius_damage = strength * 3
+	local inner_radius = outer_radius / 2
+	local inner_radius_additional_damage = outer_radius_damage
+	local volume_gain = strength * 2
+	
+	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = volume_gain, max_hear_distance = 500 })
 
 	-- damage nearby objects, player or not
-	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
-		-- nil as param#1 is supposed to work, but core can't handle it.
-		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=8}}, nil)
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, outer_radius)) do
+    		-- nil as param#1 is supposed to work, but core can't handle it.
+		obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=outer_radius_damage}}, nil)
+	end
+	-- add additional damage for objects closest to strike point
+	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, inner_radius)) do
+		if obj:get_hp() > 0 then
+      			-- nil as param#1 is supposed to work, but core can't handle it.
+			obj:punch(obj, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy=inner_radius_additional_damage}}, nil)
+		end
 	end
 
 	local playerlist = minetest.get_connected_players()
