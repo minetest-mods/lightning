@@ -164,7 +164,7 @@ lightning.strike = function(pos)
 	end
 
 	-- perform block modifications
-	if rng:next(1,10) > 1 then
+	if not default or rng:next(1,10) > 1 then
 		return
 	end
 	pos2.y = pos2.y - 1
