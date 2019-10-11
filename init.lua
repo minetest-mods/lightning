@@ -34,7 +34,7 @@ local revertsky = function()
 		return
 	end
 
-	for key, entry in pairs(ps) do
+	for _, entry in pairs(ps) do
 		local sky = entry.sky
 		entry.p:set_sky(sky.bgcolor, sky.type, sky.textures)
 	end
@@ -217,7 +217,7 @@ minetest.register_node("lightning:dying_flame", {
 })
 
 -- if other mods disable auto lightning during initialization, don't trigger the first lightning.
-minetest.after(5, function(dtime)
+minetest.after(5, function()
 	if lightning.auto then
 		minetest.after(rng:next(lightning.interval_low,
 			lightning.interval_high), lightning.strike)
