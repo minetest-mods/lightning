@@ -22,6 +22,7 @@ lightning.auto = true
 
 local rng = PcgRandom(32321123312123)
 
+-- table with playername as key and previous skybox as value
 local ps = {}
 local ttl = 1
 
@@ -34,9 +35,12 @@ local revertsky = function()
 		return
 	end
 
-	for _, entry in pairs(ps) do
-		local sky = entry.sky
-		entry.p:set_sky(sky.bgcolor, sky.type, sky.textures)
+	for playername, sky in pairs(ps) do
+		local player = minetest.get_player_by_name(playername)
+		-- check if the player is still online
+		if player then
+			player:set_sky(sky.bgcolor, sky.type, sky.textures)
+		end
 	end
 
 	ps = {}
@@ -140,7 +144,7 @@ lightning.strike = function(pos)
 
 		local name = player:get_player_name()
 		if ps[name] == nil then
-			ps[name] = {p = player, sky = sky}
+			ps[name] = sky
 			player:set_sky(0xffffff, "plain", {})
 		end
 	end
