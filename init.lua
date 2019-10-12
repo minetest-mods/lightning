@@ -19,6 +19,8 @@ lightning.range_v = 50
 lightning.size = 100
 -- disable this to stop lightning mod from striking
 lightning.auto = true
+-- range of the skybox highlight and sound effect
+lightning.effect_range = 500
 
 local rng = PcgRandom(32321123312123)
 
@@ -127,7 +129,7 @@ lightning.strike = function(pos)
 		glow = 14,
 	})
 
-	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = 500 })
+	minetest.sound_play({ pos = pos, name = "lightning_thunder", gain = 10, max_hear_distance = lightning.effect_range })
 
 	-- damage nearby objects, player or not
 	for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
@@ -138,14 +140,18 @@ lightning.strike = function(pos)
 	local playerlist = minetest.get_connected_players()
 	for i = 1, #playerlist do
 		local player = playerlist[i]
-		local sky = {}
+		local distance = vector.distance(player:get_pos(), pos)
 
-		sky.bgcolor, sky.type, sky.textures = player:get_sky()
+		-- only affect players inside effect_range
+		if distance < lightning.effect_range then
+			local sky = {}
+			sky.bgcolor, sky.type, sky.textures = player:get_sky()
 
-		local name = player:get_player_name()
-		if ps[name] == nil then
-			ps[name] = sky
-			player:set_sky(0xffffff, "plain", {})
+			local name = player:get_player_name()
+			if ps[name] == nil then
+				ps[name] = sky
+				player:set_sky(0xffffff, "plain", {})
+			end
 		end
 	end
 
