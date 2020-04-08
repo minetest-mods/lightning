@@ -1,0 +1,5 @@
+[Settings]
+# By default when fire is enabled lightning has a small chance to start
+# a fire. This value allows to disable the random fire chance even when
+# fire is enabled.
+lightning_random_fire (Enable random fire) bool true
